@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bluewex — Find Hidden Devices</title>
+<meta name="description" content="Scan for hidden cameras, Bluetooth trackers, and unknown WiFi devices. Privacy scanner for iOS and Android.">
+<meta property="og:title" content="Bluewex — Find Hidden Devices">
+<meta property="og:description" content="Scan for hidden cameras, Bluetooth trackers, and unknown WiFi devices.">
+<meta property="og:url" content="https://bluewex.app">
+<meta name="theme-color" content="#070d09">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:    #070d09;
+  --bg2:   #0c1610;
+  --bg3:   #101e14;
+  --green: #00e87a;
+  --gdim:  rgba(0,232,122,0.09);
+  --gbord: rgba(0,232,122,0.18);
+  --text:  #e8f5ee;
+  --text2: #7fa990;
+  --muted: #3a5444;
+  --bord:  rgba(0,232,122,0.08);
+  --r:     12px;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Outfit', sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1.65;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(var(--bord) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bord) 1px, transparent 1px);
+  background-size: 72px 72px;
+  pointer-events: none; z-index: 0;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  top: -300px; left: 50%;
+  transform: translateX(-50%);
+  width: 800px; height: 800px;
+  background: radial-gradient(circle, rgba(0,232,122,0.055) 0%, transparent 65%);
+  pointer-events: none; z-index: 0;
+}
+
+/* ANIMATIONS */
+@keyframes fadein   { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
+@keyframes pulse    { 0%,100% { opacity:.3; transform:scale(1) translate(-50%,-50%); } 50% { opacity:.85; transform:scale(1.04) translate(-48%,-48%); } }
+@keyframes radar    { from { transform:translateX(-50%) rotate(0deg); } to { transform:translateX(-50%) rotate(360deg); } }
+@keyframes blink    { 0%,100% { opacity:1; } 50% { opacity:.2; } }
+@keyframes scanbar  { 0% { top:10%; } 50% { top:88%; } 100% { top:10%; } }
+@keyframes slidein  { from { opacity:0; transform:translateX(12px); } to { opacity:1; transform:translateX(0); } }
+@keyframes glow     { 0%,100% { box-shadow:0 0 20px rgba(0,232,122,.25); } 50% { box-shadow:0 0 40px rgba(0,232,122,.5); } }
+
+/* ── NAV ─────────────────────────────────── */
+nav {
+  position: fixed; top:0; left:0; right:0; z-index:200;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 48px;
+  background: rgba(7,13,9,.92);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--bord);
+}
+
+.logo {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800; font-size: 20px; letter-spacing: -.4px;
+  color: var(--text); text-decoration: none;
+}
+.logo span { color: var(--green); }
+
+.nav-right { display:flex; align-items:center; gap:18px; }
+
+.lang-switcher { display:flex; gap:2px; }
+.lang-btn {
+  background: none;
+  border: 1px solid var(--muted);
+  color: var(--muted);
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: .07em; text-transform: uppercase;
+  padding: 4px 9px; cursor: pointer;
+  transition: all .18s;
+}
+.lang-btn:first-child { border-radius: 4px 0 0 4px; }
+.lang-btn:last-child  { border-radius: 0 4px 4px 0; }
+.lang-btn.active { background: var(--green); border-color: var(--green); color: #070d09; }
+.lang-btn:not(.active):hover { border-color: var(--text2); color: var(--text2); }
+
+.nav-cta {
+  display: inline-flex; align-items: center; gap:7px;
+  background: var(--green); color: #070d09;
+  font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700;
+  padding: 8px 18px; border-radius: 6px; text-decoration: none;
+  transition: opacity .18s, transform .15s;
+}
+.nav-cta:hover { opacity:.85; transform:translateY(-1px); }
+.nav-cta i { font-size:15px; }
+
+/* ── HERO ─────────────────────────────────── */
+.hero {
+  position: relative; z-index:1;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 110px 24px 80px;
+  text-align: center;
+}
+
+.hero-tag {
+  display: inline-flex; align-items: center; gap:10px;
+  font-size: 11px; font-weight: 600; letter-spacing: .13em; text-transform: uppercase;
+  color: var(--green); margin-bottom: 32px;
+  opacity:0; animation: fadein .6s ease .1s forwards;
+}
+.tag-line { width:24px; height:1px; background:var(--green); opacity:.5; }
+
+h1 {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: clamp(46px, 8.5vw, 96px);
+  line-height: .96; letter-spacing: -.03em;
+  margin-bottom: 24px;
+  opacity:0; animation: fadein .7s ease .25s forwards;
+}
+h1 em { font-style:normal; color:var(--green); }
+
+.hero-sub {
+  font-size: 17px; font-weight: 400;
+  color: var(--text2); line-height: 1.7; max-width: 420px;
+  margin-bottom: 48px;
+  opacity:0; animation: fadein .7s ease .4s forwards;
+}
+
+/* CTA BUTTON */
+.dl-btn {
+  display: inline-flex; align-items: center; gap:10px;
+  background: var(--green); color: #070d09;
+  font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 800;
+  padding: 16px 36px; border-radius: 8px; text-decoration: none;
+  letter-spacing: -.2px;
+  animation: glow 3s ease-in-out infinite;
+  transition: transform .18s, opacity .18s;
+  opacity:0; animation: fadein .7s ease .55s forwards, glow 3s ease-in-out 1.5s infinite;
+}
+.dl-btn:hover { transform: translateY(-2px); opacity:.9; }
+.dl-btn i { font-size:20px; }
+
+.store-note {
+  font-size: 12px; color: var(--muted); margin-top: 14px;
+  display: flex; align-items: center; justify-content: center; gap:8px;
+  opacity:0; animation: fadein .7s ease .75s forwards;
+}
+.store-note i { font-size:14px; color:var(--text2); }
+
+/* RADAR */
+.radar-wrap {
+  position: relative; width:280px; height:280px; margin-top:64px;
+  opacity:0; animation: fadein .9s ease .9s forwards;
+}
+.radar-ring {
+  position: absolute; border-radius:50%;
+  border: 1px solid rgba(0,232,122,.16);
+  top:50%; left:50%;
+  transform: translate(-50%,-50%);
+  animation: pulse 3.4s ease-in-out infinite;
+}
+.radar-ring:nth-child(1) { width:56px;  height:56px;  animation-delay:0s; }
+.radar-ring:nth-child(2) { width:110px; height:110px; animation-delay:.45s; }
+.radar-ring:nth-child(3) { width:168px; height:168px; animation-delay:.9s; }
+.radar-ring:nth-child(4) { width:270px; height:270px; animation-delay:1.35s; }
+.radar-sweep {
+  position: absolute; top:9px; left:50%;
+  transform: translateX(-50%);
+  width:1px; height:131px;
+  background: linear-gradient(to bottom, transparent, var(--green));
+  transform-origin: bottom center;
+  animation: radar 4.5s linear infinite;
+}
+.radar-center {
+  position: absolute; top:50%; left:50%;
+  transform: translate(-50%,-50%);
+  width:10px; height:10px;
+  background: var(--green); border-radius:50%;
+  box-shadow: 0 0 20px var(--green);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+.radar-lbl {
+  position: absolute; white-space: nowrap;
+  font-size:10px; font-weight:500; letter-spacing:.06em; text-transform:uppercase; color:var(--muted);
+  display:flex; align-items:center; gap:5px;
+}
+.rdot { width:5px; height:5px; border-radius:50%; background:var(--green); animation:blink 2.2s ease-in-out infinite; }
+.rdot.red { background:#ff4560; }
+.rl1 { top:12px; right:-52px; }
+.rl2 { bottom:52px; left:-68px; }
+.rl3 { bottom:18px; right:-46px; animation-delay:.8s; }
+
+/* ── SECTION BASE ─────────────────────────── */
+section { position:relative; z-index:1; }
+.inner { max-width:1040px; margin:0 auto; padding:0 48px; }
+.s-label {
+  display:inline-flex; align-items:center; gap:8px;
+  font-size:11px; font-weight:600; letter-spacing:.13em; text-transform:uppercase;
+  color:var(--green); margin-bottom:18px;
+}
+.s-label::before { content:''; display:block; width:18px; height:1px; background:var(--green); opacity:.6; }
+.s-title {
+  font-family:'Syne',sans-serif; font-weight:800;
+  font-size:clamp(28px,4vw,44px); letter-spacing:-.025em; line-height:1.07;
+  margin-bottom:14px;
+}
+.s-desc { font-size:16px; color:var(--text2); max-width:480px; line-height:1.72; }
+.sep { border-top: 1px solid var(--bord); }
+
+/* ── HOW IT WORKS ─────────────────────────── */
+.hiw { padding:100px 0; }
+.hiw-hd { margin-bottom:56px; }
+.steps {
+  display:grid; grid-template-columns:repeat(3,1fr);
+  gap:1px; background:var(--bord);
+  border:1px solid var(--bord); border-radius:var(--r); overflow:hidden;
+}
+.step { background:var(--bg); padding:36px 30px; position:relative; transition:background .2s; }
+.step:hover { background:var(--bg2); }
+.step-icon {
+  width:48px; height:48px;
+  background:var(--gdim); border:1px solid var(--gbord); border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:22px; color:var(--green); margin-bottom:20px;
+}
+.step-n {
+  font-family:'Syne',sans-serif; font-size:11px; font-weight:700;
+  letter-spacing:.12em; color:var(--muted); text-transform:uppercase;
+  margin-bottom:10px;
+}
+.step-title { font-family:'Syne',sans-serif; font-size:18px; font-weight:700; margin-bottom:10px; color:var(--text); }
+.step-desc  { font-size:15px; color:var(--text2); line-height:1.72; }
+.step-arr {
+  position:absolute; top:50%; right:-14px;
+  width:28px; height:28px;
+  background:var(--bg3); border:1px solid var(--gbord); border-radius:50%;
+  display:flex; align-items:center; justify-content:center; z-index:2;
+  transform:translateY(-50%); font-size:12px; color:var(--green);
+}
+
+/* ── FEATURES ─────────────────────────────── */
+.feats { padding:100px 0; }
+.feats-hd { margin-bottom:52px; }
+.feats-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; }
+.feat-card {
+  background:var(--bg2); border:1px solid var(--bord); border-radius:var(--r);
+  padding:36px; transition:border-color .2s, background .2s;
+}
+.feat-card:hover { border-color:var(--gbord); background:var(--bg3); }
+.feat-icon {
+  width:52px; height:52px;
+  background:var(--gdim); border:1px solid var(--gbord); border-radius:12px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:24px; color:var(--green); margin-bottom:20px;
+}
+.feat-title { font-family:'Syne',sans-serif; font-size:18px; font-weight:700; margin-bottom:10px; color:var(--text); }
+.feat-desc  { font-size:15px; color:var(--text2); line-height:1.72; }
+.feat-tag {
+  display:inline-block; margin-top:16px;
+  font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--green); background:var(--gdim);
+  padding:3px 10px; border-radius:4px;
+}
+
+/* ── SCREENSHOTS ──────────────────────────── */
+.shots { padding:100px 0; overflow:hidden; }
+.shots-hd { margin-bottom:56px; }
+.shots-img-wrap {
+  position:relative;
+  background:#fff;
+  border-radius:16px;
+  overflow:hidden;
+  border:1px solid rgba(0,232,122,.15);
+}
+.shots-img-wrap img {
+  width:100%; display:block;
+  filter:contrast(1.02) saturate(1.05);
+}
+.shots-caption {
+  display:flex; justify-content:center; flex-wrap:wrap; gap:8px;
+  margin-top:28px;
+}
+.shot-cap {
+  font-size:12px; font-weight:500; color:var(--muted);
+  background:var(--bg2); border:1px solid var(--bord);
+  padding:4px 14px; border-radius:20px; letter-spacing:.04em;
+}
+
+/* ── REVIEWS ──────────────────────────────── */
+.reviews { padding:100px 0; }
+.rev-hd  { margin-bottom:52px; }
+.rev-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+.rev-card {
+  background:var(--bg2); border:1px solid var(--bord); border-radius:var(--r); padding:28px;
+}
+.rev-stars { color:var(--green); font-size:12px; letter-spacing:2px; margin-bottom:14px; }
+.rev-text  { font-size:15px; color:var(--text2); line-height:1.75; margin-bottom:20px; font-style:italic; }
+.rev-name  { font-size:13px; font-weight:600; color:var(--text); }
+.rev-meta  { font-size:12px; color:var(--muted); margin-top:2px; }
+
+/* ── BOTTOM CTA ───────────────────────────── */
+.bcta { padding:120px 0; text-align:center; }
+.bcta h2 {
+  font-family:'Syne',sans-serif; font-weight:800;
+  font-size:clamp(34px,5.5vw,64px); letter-spacing:-.03em; line-height:1.04;
+  margin-bottom:18px;
+}
+.bcta h2 span { color:var(--green); }
+.bcta p { font-size:17px; color:var(--text2); margin-bottom:44px; }
+.bcta .dl-btn { opacity:1; animation:glow 3s ease-in-out infinite; }
+
+/* ── FOOTER ───────────────────────────────── */
+footer {
+  position:relative; z-index:1;
+  border-top: 1px solid var(--bord);
+  padding:28px 48px;
+  display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+}
+.footer-l .logo { font-size:16px; }
+.footer-copy { font-size:12px; color:var(--muted); margin-top:5px; }
+.footer-links { display:flex; gap:22px; flex-wrap:wrap; }
+.footer-links a { font-size:13px; color:var(--muted); text-decoration:none; transition:color .18s; }
+.footer-links a:hover { color:var(--text); }
+
+/* ── RESPONSIVE ───────────────────────────── */
+@media (max-width:768px) {
+  nav { padding:14px 20px; }
+  .nav-cta { display:none; }
+  .inner { padding:0 20px; }
+  .steps { grid-template-columns:1fr; }
+  .step-arr { display:none; }
+  .feats-grid { grid-template-columns:1fr; }
+  .rev-grid { grid-template-columns:1fr; }
+  footer { padding:22px 20px; flex-direction:column; }
+  .footer-links { justify-content:center; }
+  .radar-lbl { display:none; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="/" class="logo">Blue<span>wex</span></a>
+  <div class="nav-right">
+    <div class="lang-switcher">
+      <button class="lang-btn active" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" onclick="setLang('es')">ES</button>
+      <button class="lang-btn" onclick="setLang('tr')">TR</button>
+    </div>
+    <a href="https://app.adjust.com/1z8biw5h" class="nav-cta" target="_blank">
+      <i class="ph-bold ph-download-simple"></i>
+      <span data-t="nav_cta">Download Free</span>
+    </a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-tag"><span class="tag-line"></span><span data-t="hero_tag">Privacy Scanner</span><span class="tag-line"></span></div>
+
+  <h1 data-t="hero_h1">Know what's<br>around <em>you.</em></h1>
+
+  <p class="hero-sub" data-t="hero_sub">Scan for hidden cameras, Bluetooth trackers, and unknown devices on your network — in seconds.</p>
+
+  <a href="https://app.adjust.com/1z8biw5h" class="dl-btn" target="_blank">
+    <i class="ph-bold ph-device-mobile"></i>
+    <span data-t="hero_btn">Download Free</span>
+  </a>
+
+  <p class="store-note">
+    <i class="ph ph-apple-logo"></i> <span data-t="store_note_ios">iOS</span>
+    &nbsp;·&nbsp;
+    <i class="ph ph-google-play-logo"></i> <span data-t="store_note_and">Android</span>
+    &nbsp;·&nbsp; <span data-t="store_note_free">Free to download</span>
+  </p>
+
+  <div class="radar-wrap">
+    <div class="radar-ring"></div>
+    <div class="radar-ring"></div>
+    <div class="radar-ring"></div>
+    <div class="radar-ring"></div>
+    <div class="radar-sweep"></div>
+    <div class="radar-center"></div>
+    <div class="radar-lbl rl1"><span class="rdot"></span><span data-t="r1">WiFi · 12 devices</span></div>
+    <div class="radar-lbl rl2"><span class="rdot red"></span><span data-t="r2">BLE · unknown tag</span></div>
+    <div class="radar-lbl rl3"><span class="rdot"></span><span data-t="r3">Camera · clear</span></div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="hiw sep">
+  <div class="inner">
+    <div class="hiw-hd">
+      <div class="s-label" data-t="hiw_label">How it works</div>
+      <h2 class="s-title" data-t="hiw_title">Three steps.<br>Total peace of mind.</h2>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-icon"><i class="ph-bold ph-scan"></i></div>
+        <p class="step-n" data-t="s_n1">Step 01</p>
+        <p class="step-title" data-t="s1_t">Open &amp; launch scan</p>
+        <p class="step-desc" data-t="s1_d">Tap the scan button. Bluewex instantly probes your environment — WiFi networks, BLE signals, and camera reflections simultaneously.</p>
+        <div class="step-arr"><i class="ph-bold ph-arrow-right"></i></div>
+      </div>
+      <div class="step">
+        <div class="step-icon"><i class="ph-bold ph-list-magnifying-glass"></i></div>
+        <p class="step-n" data-t="s_n2">Step 02</p>
+        <p class="step-title" data-t="s2_t">Review findings</p>
+        <p class="step-desc" data-t="s2_d">Results appear in real time. Unknown or suspicious devices are flagged immediately. Tap any result for a detailed tracking view with distance estimates.</p>
+        <div class="step-arr"><i class="ph-bold ph-arrow-right"></i></div>
+      </div>
+      <div class="step">
+        <div class="step-icon"><i class="ph-bold ph-shield-check"></i></div>
+        <p class="step-n" data-t="s_n3">Step 03</p>
+        <p class="step-title" data-t="s3_t">Take action</p>
+        <p class="step-desc" data-t="s3_d">Track the exact location of suspicious devices using live signal strength and haptic feedback. Know your space is secure before you settle in.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="feats sep">
+  <div class="inner">
+    <div class="feats-hd">
+      <div class="s-label" data-t="f_label">Detection suite</div>
+      <h2 class="s-title" data-t="f_title">Four ways to scan.<br>Zero blind spots.</h2>
+    </div>
+    <div class="feats-grid">
+      <div class="feat-card">
+        <div class="feat-icon"><i class="ph-bold ph-wifi-high"></i></div>
+        <p class="feat-title" data-t="f1_t">WiFi &amp; Network Scan</p>
+        <p class="feat-desc" data-t="f1_d">Discover every device on your local network via mDNS/Bonjour. Spot streaming sticks, hubs, printers, and unrecognized hardware at a glance.</p>
+        <span class="feat-tag">mDNS · Bonjour</span>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon"><i class="ph-bold ph-bluetooth"></i></div>
+        <p class="feat-title" data-t="f2_t">Bluetooth Tracker Finder</p>
+        <p class="feat-desc" data-t="f2_d">Scan for nearby BLE devices with live RSSI signal strength and an animated proximity meter. Identify unknown Bluetooth tags and trackers.</p>
+        <span class="feat-tag">BLE · RSSI</span>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon"><i class="ph-bold ph-camera"></i></div>
+        <p class="feat-title" data-t="f3_t">Lens-Glint Camera Check</p>
+        <p class="feat-desc" data-t="f3_d">Use your camera and flashlight to reveal reflective glints from hidden lenses inside clocks, vents, picture frames, or room décor.</p>
+        <span class="feat-tag">Optical · IR</span>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon"><i class="ph-bold ph-magnet"></i></div>
+        <p class="feat-title" data-t="f4_t">Magnetic Spike Detector</p>
+        <p class="feat-desc" data-t="f4_d">Monitor magnetic field anomalies from powered electronics concealed in walls, mirrors, or furniture. Visual and haptic alerts on spikes.</p>
+        <span class="feat-tag">Magnetometer</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SCREENSHOTS -->
+<section class="shots sep">
+  <div class="inner">
+    <div class="shots-hd">
+      <div class="s-label" data-t="ss_label">App screenshots</div>
+      <h2 class="s-title" data-t="ss_title">Simple interface.<br>Powerful scanning.</h2>
+    </div>
+    <div class="shots-img-wrap">
+      <img src="./assets/screenshots.png" alt="Bluewex app screenshots showing WiFi scan, camera detection, Bluetooth finder and magnetic detector" loading="lazy">
+    </div>
+    <div class="shots-caption">
+      <span class="shot-cap" data-t="cap1">Hidden Camera Scan</span>
+      <span class="shot-cap" data-t="cap2">WiFi Network Scan</span>
+      <span class="shot-cap" data-t="cap3">Bluetooth Finder</span>
+      <span class="shot-cap" data-t="cap4">Magnetic Detection</span>
+    </div>
+  </div>
+</section>
+
+<!-- REVIEWS -->
+<section class="reviews sep">
+  <div class="inner">
+    <div class="rev-hd">
+      <div class="s-label" data-t="rv_label">User reviews</div>
+      <h2 class="s-title" data-t="rv_title">Trusted by travelers<br>and privacy seekers.</h2>
+    </div>
+    <div class="rev-grid">
+      <div class="rev-card">
+        <div class="rev-stars">★★★★★</div>
+        <p class="rev-text" data-t="rv1">"Downloaded before a business trip. Scanned the hotel room and it showed unknown Bluetooth devices nearby. App is simple and fast — gives real peace of mind."</p>
+        <p class="rev-name">LUZIAcronore</p>
+        <p class="rev-meta" data-t="rv1_m">Feb 2025 · App Store</p>
+      </div>
+      <div class="rev-card">
+        <div class="rev-stars">★★★★★</div>
+        <p class="rev-text" data-t="rv2">"Works better than other hidden camera finder apps I tried. Clean UI, fast scan, clear results. Gives real peace of mind when staying somewhere new."</p>
+        <p class="rev-name">NesbittSherylf</p>
+        <p class="rev-meta" data-t="rv2_m">Feb 2025 · App Store</p>
+      </div>
+      <div class="rev-card">
+        <div class="rev-stars">★★★★★</div>
+        <p class="rev-text" data-t="rv3">"I travel a lot for work and this app surprised me. It picked up Bluetooth devices in my Airbnb I didn't even notice. Super simple interface. Definitely keeping this."</p>
+        <p class="rev-name">Santos_Ryannb</p>
+        <p class="rev-meta" data-t="rv3_m">Feb 2025 · App Store</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BOTTOM CTA -->
+<section class="bcta sep">
+  <div class="inner">
+    <h2 data-t="cta_h2">Your space.<br><span>Your rules.</span></h2>
+    <p data-t="cta_p">Free to download. Scan any room in seconds.</p>
+    <a href="https://app.adjust.com/1z8biw5h" class="dl-btn" target="_blank">
+      <i class="ph-bold ph-download-simple"></i>
+      <span data-t="cta_btn">Download Free</span>
+    </a>
+    <p class="store-note" style="margin-top:16px; opacity:1;">
+      <i class="ph ph-apple-logo"></i> <span data-t="store_note_ios">iOS</span>
+      &nbsp;·&nbsp;
+      <i class="ph ph-google-play-logo"></i> <span data-t="store_note_and">Android</span>
+    </p>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-l">
+    <a href="/" class="logo">Blue<span>wex</span></a>
+    <p class="footer-copy" data-t="copy">© 2025 Bluewex. All rights reserved.</p>
+  </div>
+  <div class="footer-links">
+    <a href="/privacy.html" data-t="fp">Privacy Policy</a>
+    <a href="/privacy.html#terms" data-t="ft">Terms of Use</a>
+    <a href="mailto:support@bluewex.co" data-t="fs">Support</a>
+  </div>
+</footer>
+
+<script>
+const T = {
+  en: {
+    nav_cta:"Download Free", hero_tag:"Privacy Scanner",
+    hero_h1:"Know what's<br>around <em>you.</em>",
+    hero_sub:"Scan for hidden cameras, Bluetooth trackers, and unknown devices on your network — in seconds.",
+    hero_btn:"Download Free",
+    store_note_ios:"iOS", store_note_and:"Android", store_note_free:"Free to download",
+    r1:"WiFi · 12 devices", r2:"BLE · unknown tag", r3:"Camera · clear",
+    hiw_label:"How it works", hiw_title:"Three steps.<br>Total peace of mind.",
+    s_n1:"Step 01", s_n2:"Step 02", s_n3:"Step 03",
+    s1_t:"Open & launch scan",
+    s1_d:"Tap the scan button. Bluewex instantly probes your environment — WiFi networks, BLE signals, and camera reflections simultaneously.",
+    s2_t:"Review findings",
+    s2_d:"Results appear in real time. Unknown devices are flagged immediately. Tap any result for a detailed tracking view with distance estimates.",
+    s3_t:"Take action",
+    s3_d:"Track the exact location of suspicious devices using live signal strength and haptic feedback. Know your space is secure.",
+    f_label:"Detection suite", f_title:"Four ways to scan.<br>Zero blind spots.",
+    f1_t:"WiFi & Network Scan", f1_d:"Discover every device on your local network via mDNS/Bonjour. Spot streaming sticks, hubs, printers, and unrecognized hardware at a glance.",
+    f2_t:"Bluetooth Tracker Finder", f2_d:"Scan for nearby BLE devices with live RSSI signal strength and an animated proximity meter. Identify unknown Bluetooth tags and trackers.",
+    f3_t:"Lens-Glint Camera Check", f3_d:"Use your camera and flashlight to reveal reflective glints from hidden lenses inside clocks, vents, picture frames, or room décor.",
+    f4_t:"Magnetic Spike Detector", f4_d:"Monitor magnetic field anomalies from powered electronics concealed in walls, mirrors, or furniture. Visual and haptic alerts on spikes.",
+    ss_label:"App screenshots", ss_title:"Simple interface.<br>Powerful scanning.",
+    cap1:"Hidden Camera Scan", cap2:"WiFi Network Scan", cap3:"Bluetooth Finder", cap4:"Magnetic Detection",
+    rv_label:"User reviews", rv_title:"Trusted by travelers<br>and privacy seekers.",
+    rv1:'"Downloaded before a business trip. Scanned the hotel room and it showed unknown Bluetooth devices nearby. App is simple and fast — gives real peace of mind."',
+    rv2:'"Works better than other hidden camera finder apps I tried. Clean UI, fast scan, clear results. Gives real peace of mind when staying somewhere new."',
+    rv3:'"I travel a lot for work and this app surprised me. Picked up Bluetooth devices in my Airbnb I didn\'t even notice. Super simple interface."',
+    rv1_m:"Feb 2025 · App Store", rv2_m:"Feb 2025 · App Store", rv3_m:"Feb 2025 · App Store",
+    cta_h2:"Your space.<br><span>Your rules.</span>", cta_p:"Free to download. Scan any room in seconds.", cta_btn:"Download Free",
+    copy:"© 2025 Bluewex. All rights reserved.", fp:"Privacy Policy", ft:"Terms of Use", fs:"Support"
+  },
+  es: {
+    nav_cta:"Descargar gratis", hero_tag:"Escáner de privacidad",
+    hero_h1:"Sabe qué hay<br>a tu <em>alrededor.</em>",
+    hero_sub:"Detecta cámaras ocultas, rastreadores Bluetooth y dispositivos desconocidos en tu red — en segundos.",
+    hero_btn:"Descargar gratis",
+    store_note_ios:"iOS", store_note_and:"Android", store_note_free:"Descarga gratuita",
+    r1:"WiFi · 12 dispositivos", r2:"BLE · rastreador desconocido", r3:"Cámara · sin riesgo",
+    hiw_label:"Cómo funciona", hiw_title:"Tres pasos.<br>Total tranquilidad.",
+    s_n1:"Paso 01", s_n2:"Paso 02", s_n3:"Paso 03",
+    s1_t:"Abre e inicia el escaneo",
+    s1_d:"Pulsa el botón de escaneo. Bluewex detecta redes WiFi, señales BLE y reflejos de cámara al instante.",
+    s2_t:"Revisa los hallazgos",
+    s2_d:"Los resultados aparecen en tiempo real. Los dispositivos desconocidos se marcan al instante. Pulsa cualquier resultado para verlo en detalle.",
+    s3_t:"Toma acción",
+    s3_d:"Localiza dispositivos sospechosos con intensidad de señal en vivo y retroalimentación háptica. Asegura tu espacio.",
+    f_label:"Suite de detección", f_title:"Cuatro formas de escanear.<br>Cero puntos ciegos.",
+    f1_t:"Escaneo WiFi y red", f1_d:"Descubre cada dispositivo en tu red local. Detecta sticks de streaming, hubs, impresoras y hardware desconocido al instante.",
+    f2_t:"Detector de rastreadores BLE", f2_d:"Escanea dispositivos BLE cercanos con intensidad de señal en vivo y un medidor de proximidad animado.",
+    f3_t:"Verificación de cámaras", f3_d:"Usa tu cámara y linterna para revelar destellos de lentes ocultos en relojes, rejillas o decoración.",
+    f4_t:"Detector de picos magnéticos", f4_d:"Monitoriza anomalías en el campo magnético de dispositivos ocultos en paredes, espejos o muebles.",
+    ss_label:"Capturas de pantalla", ss_title:"Interfaz simple.<br>Escaneo potente.",
+    cap1:"Escaneo de cámara", cap2:"Escaneo WiFi", cap3:"Detector BLE", cap4:"Detección magnética",
+    rv_label:"Reseñas", rv_title:"Confiado por viajeros<br>y amantes de la privacidad.",
+    rv1:'"Lo descargué antes de un viaje. Escaneé la habitación del hotel y encontré dispositivos Bluetooth desconocidos. La app es simple y rápida."',
+    rv2:'"Funciona mejor que otras apps de cámaras ocultas. Interfaz limpia, escaneo rápido y resultados claros."',
+    rv3:'"Viajo mucho y esta app me sorprendió. Detectó dispositivos en mi Airbnb que ni noté. Interfaz súper simple."',
+    rv1_m:"Feb 2025 · App Store", rv2_m:"Feb 2025 · App Store", rv3_m:"Feb 2025 · App Store",
+    cta_h2:"Tu espacio.<br><span>Tus reglas.</span>", cta_p:"Descarga gratuita. Escanea cualquier habitación en segundos.", cta_btn:"Descargar gratis",
+    copy:"© 2025 Bluewex. Todos los derechos reservados.", fp:"Política de privacidad", ft:"Términos de uso", fs:"Soporte"
+  },
+  tr: {
+    nav_cta:"Ücretsiz İndir", hero_tag:"Gizlilik Tarayıcısı",
+    hero_h1:"Etrafınızda ne<br>var, <em>bilin.</em>",
+    hero_sub:"Gizli kameralar, Bluetooth takipçiler ve ağınızdaki bilinmeyen cihazlar için saniyeler içinde tarama yapın.",
+    hero_btn:"Ücretsiz İndir",
+    store_note_ios:"iOS", store_note_and:"Android", store_note_free:"Ücretsiz indir",
+    r1:"WiFi · 12 cihaz", r2:"BLE · bilinmeyen etiket", r3:"Kamera · temiz",
+    hiw_label:"Nasıl çalışır", hiw_title:"Üç adım.<br>Tam gönül rahatlığı.",
+    s_n1:"Adım 01", s_n2:"Adım 02", s_n3:"Adım 03",
+    s1_t:"Aç ve taramayı başlat",
+    s1_d:"Tarama düğmesine dokun. Bluewex WiFi ağlarını, BLE sinyallerini ve kamera yansımalarını aynı anda taramaya başlar.",
+    s2_t:"Bulguları incele",
+    s2_d:"Sonuçlar gerçek zamanlı görünür. Bilinmeyen cihazlar anında işaretlenir. Detaylı takip için herhangi bir sonuca dokun.",
+    s3_t:"Harekete geç",
+    s3_d:"Şüpheli cihazların tam konumunu canlı sinyal gücü ve haptik geri bildirimle takip et. Alanının güvende olduğunu öğren.",
+    f_label:"Tespit paketi", f_title:"Dört tarama yöntemi.<br>Sıfır kör nokta.",
+    f1_t:"WiFi ve Ağ Taraması", f1_d:"Yerel ağınızdaki her cihazı mDNS/Bonjour ile keşfedin. Streaming cihazları, hub'lar ve tanımlanamayan donanımları anında tespit edin.",
+    f2_t:"Bluetooth Takipçi Bulucu", f2_d:"Yakın BLE cihazları canlı RSSI sinyal gücü ve animasyonlu yakınlık ölçeriyle tarayın. Bilinmeyen Bluetooth etiketlerini tespit edin.",
+    f3_t:"Lens Parlaması Kamera Kontrolü", f3_d:"Kameranızı ve el fenerini kullanarak saatlerin, havalandırma ızgaralarının veya dekorasyonun içine gizlenmiş lenslerin yansımasını ortaya çıkarın.",
+    f4_t:"Manyetik Spike Dedektörü", f4_d:"Duvarlara, aynaların arkasına veya mobilyalara gizlenmiş elektronik cihazlardan kaynaklanan manyetik alan anomalilerini izleyin.",
+    ss_label:"Uygulama ekran görüntüleri", ss_title:"Sade arayüz.<br>Güçlü tarama.",
+    cap1:"Gizli Kamera Taraması", cap2:"WiFi Ağ Taraması", cap3:"Bluetooth Bulucu", cap4:"Manyetik Tespit",
+    rv_label:"Kullanıcı yorumları", rv_title:"Gezginlerin ve gizlilik<br>meraklılarının tercihi.",
+    rv1:'"İş seyahatinden önce indirdim. Otel odasını taradım ve bilinmeyen Bluetooth cihazlar buldu. Uygulama çok sade ve hızlı."',
+    rv2:'"Denediğim diğer gizli kamera uygulamalardan çok daha iyi çalışıyor. Temiz arayüz, hızlı tarama, net sonuçlar."',
+    rv3:'"İş için çok seyahat ediyorum ve bu uygulama beni şaşırttı. Airbnb\'de fark etmediğim Bluetooth cihazları tespit etti."',
+    rv1_m:"Şub 2025 · App Store", rv2_m:"Şub 2025 · App Store", rv3_m:"Şub 2025 · App Store",
+    cta_h2:"Senin alanın.<br><span>Senin kuralların.</span>", cta_p:"Ücretsiz indirin. Herhangi bir odayı saniyeler içinde tarayın.", cta_btn:"Ücretsiz İndir",
+    copy:"© 2025 Bluewex. Tüm hakları saklıdır.", fp:"Gizlilik Politikası", ft:"Kullanım Koşulları", fs:"Destek"
+  }
+};
+
+function setLang(l) {
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.textContent.toLowerCase() === l));
+  document.querySelectorAll('[data-t]').forEach(el => {
+    const k = el.getAttribute('data-t');
+    if (T[l][k] !== undefined) el.innerHTML = T[l][k];
+  });
+  document.documentElement.lang = l;
+}
+</script>
+</body>
+</html>
