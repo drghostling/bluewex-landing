@@ -1,0 +1,24 @@
+{
+  "name": "bluewex-landing",
+  "version": "1.0.0",
+  "description": "Landing page for [Bluewex](https://bluewex.co) — privacy scanner app for iOS & Android.",
+  "main": "index.html",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/drghostling/bluewex-landing.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/drghostling/bluewex-landing/issues"
+  },
+  "homepage": "https://github.com/drghostling/bluewex-landing#readme",
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1"
+  }
+}
